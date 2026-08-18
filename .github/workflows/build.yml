@@ -119,13 +119,39 @@ jobs:
       run: msbuild vcnet/cups.sln /p:Configuration=Release /p:Platform=x64 /m
     - name: Copy LibreSSL DLLs to output
       run: Copy-Item vcnet/packages/libressl_native.redist.4.0.0/build/native/bin/x64/Release/*.dll vcnet/x64/Release/
+    - name: Create launcher batch files
+      shell: pwsh
+      run: |
+        $tools = @('cupstestppd','ippeveprinter','ippfind','ipptool')
+        foreach ($t in $tools) {
+          $bat = "@echo off`r`ncd /d `"%~dp0`"`r`n$t.exe %*`r`npause"
+          Set-Content -Path "vcnet/x64/Release/$t.bat" -Value $bat -Encoding ASCII
+        }
+    - name: Package with NSIS
+      run: |
+        $nsisScript = @'
+        !include "MUI2.nsh"
+        Name "CUPS Tools"
+        OutFile "cups-windows-x64.exe"
+        InstallDir "$PROGRAMFILES\CUPS"
+        Page directory
+        Page instfiles
+        Section
+          SetOutPath "$INSTDIR"
+          File "vcnet\x64\Release\*.*"
+          CreateDirectory "$SMPROGRAMS\CUPS"
+          CreateShortCut "$SMPROGRAMS\CUPS\ipptool.lnk" "$INSTDIR\ipptool.exe" "" "$INSTDIR\ipptool.exe" 0
+          CreateShortCut "$SMPROGRAMS\CUPS\ippfind.lnk" "$INSTDIR\ippfind.exe" "" "$INSTDIR\ippfind.exe" 0
+          CreateShortCut "$SMPROGRAMS\CUPS\ippeveprinter.lnk" "$INSTDIR\ippeveprinter.exe" "" "$INSTDIR\ippeveprinter.exe" 0
+          CreateShortCut "$SMPROGRAMS\CUPS\cupstestppd.lnk" "$INSTDIR\cupstestppd.exe" "" "$INSTDIR\cupstestppd.exe" 0
+          CreateShortCut "$DESKTOP\CUPS ipptool.lnk" "$INSTDIR\ipptool.exe"
+        SectionEnd
+        '@
+        Set-Content -Path "installer.nsi" -Value $nsisScript -Encoding UTF8
+        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
         name: windows-x64-release
-        path: |
-          vcnet/x64/Release/*.dll
-          vcnet/x64/Release/*.lib
-          vcnet/x64/Release/*.exe
-          vcnet/x64/Release/*.pdb
+        path: cups-windows-x64.exe
