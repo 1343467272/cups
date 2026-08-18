@@ -109,9 +109,21 @@ jobs:
     steps:
     - name: Checkout CUPS sources
       uses: actions/checkout@v7
-    - name: Configure CUPS
-      uses: microsoft/setup-msbuild@v3.0.0
-    - name: Install prerequisites
-      run: cd vcnet; nuget restore cups.sln
-    - name: Build CUPS
-      run: cd vcnet; msbuild cups.sln
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+    - name: Restore NuGet packages
+      run: nuget restore vcnet/cups.sln
+    - name: Build CUPS (Release)
+      run: msbuild vcnet/cups.sln /p:Configuration=Release /p:Platform=x64 /m
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: windows-x64-release
+        path: |
+          vcnet/x64/Release/*.dll
+          vcnet/x64/Release/*.lib
+          vcnet/x64/Release/*.exe
+          vcnet/x64/Release/*.pdb
