@@ -117,6 +117,8 @@ jobs:
       run: nuget restore vcnet/cups.sln
     - name: Build CUPS (Release)
       run: msbuild vcnet/cups.sln /p:Configuration=Release /p:Platform=x64 /m
+    - name: Copy LibreSSL DLLs to output
+      run: Copy-Item vcnet/packages/libressl_native.redist.4.0.0/build/native/bin/x64/Release/*.dll vcnet/x64/Release/
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
